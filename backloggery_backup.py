@@ -1,4 +1,5 @@
-# import requests
+
+import requests
 
 """
 You don't need to know ahead of time how many games there are in your collection. This script will collect
@@ -25,6 +26,7 @@ iterations = 1
 # backloggery_backup = ""
 backloggery_backup = []
 
+gameDetails = []
 moreGames = True
 while moreGames:
 
@@ -65,13 +67,27 @@ while moreGames:
 
         x = 0
         currentConsole = ""
+        completionStatus = ""
+        name = ""
+        comments = ""
         while x < len(backloggery_backup):
 
             currentLine = backloggery_backup[x].strip()
             print(x, ".\t", currentLine)
 
+            # Reached the beginning of a new game row
+            if '<section class="gamebox">' in currentLine:
+                print("-------------------------------------------------")
+                gameDetailsRow = currentConsole + "," + completionStatus + "," + name + "," + comments
+                if name:
+                    gameDetails.append(gameDetailsRow)
+
+                completionStatus = ""
+                name = ""
+                comments = ""
+
             # Get console
-            if 'class="gamebox systemend"' in currentLine:
+            elif 'class="gamebox systemend"' in currentLine:
                 if currentLine.startswith('</section>'):
                     currentLine = currentLine[10:]
                 currentLine = currentLine.split('>')
@@ -80,8 +96,16 @@ while moreGames:
 
             # Get status
             elif 'alt="(' in currentLine:
-                completionStatus = currentLine.split('(')[1].split(')')[0]
+                splitLine = currentLine
+                completionStatus = splitLine.split('(')[1].split(')')[0]
                 print("\nStatus is:", completionStatus)
+
+                # Case of name on the same line as the status. For example:
+                # <a href="games.php?user=originalkilljoy&amp;console=360&amp;status=2"><img alt="(B)"
+                # width="16" height="16" src="images/beaten.gif" /></a> <b>Assassin's Creed</b>
+                if "status=2" in currentLine or "status=3" in currentLine:
+                    name = currentLine.split('<b>')[1].split('<')[0]
+
 
             # Get name
             elif currentLine.startswith('<b>') and currentLine.endswith('</b>'):
@@ -89,4 +113,53 @@ while moreGames:
                 name = currentLine[3:cutoff]
                 print("\nName is:", name)
 
+            # Get comments
+            elif 'getComments' in currentLine:
+                comments = currentLine.split('>')[3].split('<')[0]
+
+            # Part of a compilation?
+            elif 'getComp(' in currentLine:
+                compilation = currentLine.split('<')[0].strip()
+                print("\nCompilation:", compilation)
+                gameDetailsRow = currentConsole + "," + compilation
+                gameDetails.append(gameDetailsRow)
+
+
+
             x += 1
+
+
+
+
+# Test comments function --------
+
+currentLine = """
+<div class="gamerow">Beat the campaign on Normal</div><div class="gamecom-arrows" id="gamecomarr3018293"
+onclick="getComments(3018293)">&#x25BC; &#x25BC; &#x25BC;</div> <div id="comments3018293"
+class="gamerow" style="display: none; border: none;">Owned DLC: 1. Anniversary Map Pack; 2. Defiant Map Pack; 3. Noble Map Pack</div></section>
+"""
+
+currentLine = """
+<div class="gamecom-arrows" id="gamecomarr12805652" onclick="getComments(12805652)">&#x25BC; &#x25BC; &#x25BC;</div> <div id="comments12805652" class="gamerow" style="display: none; border: none;">Nostromo Edition</div></section>
+"""
+
+comments1 = ""
+comments2 = ""
+if 'getComments' in currentLine:
+#     comments = currentLine.split('>')[3].split('<')[0]
+    splitLine = currentLine.split('getComments')
+    part1 = splitLine[0]
+    if "gamerow" in part1:
+        comments1 = part1.split('"gamerow">')[1].split('<')[0] + "|"
+    part2 = splitLine[1].replace('&#x25BC;', "").strip()
+    comments2 = part2.split('>')[3].split('<')[0]
+    print(part1)
+    print('\n', part2)
+
+    print('\n', comments1)
+    print('\n', comments2)
+
+    comments = comments1 + comments2
+    comments.replace(",", ";")
+
+    print('\n', comments)
