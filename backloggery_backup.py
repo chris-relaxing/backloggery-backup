@@ -21,26 +21,29 @@ TODO:
 
 """
 
-
 backloggery_username = "originalKILLJOY"
 export_to_csv  = True
 export_to_xlsx = True
 
 count = 0
 iterations = 1
-# backloggery_backup = ""
 backloggery_backup = []
 gameDetails = []
+gameDetailsMatrix = []
 compGameDetails = []
 currentConsole = ""
 completionStatus = ""
 name = ""
 comments = ""
 achievements = ""
+compilationName = ""
+system = ""
 
 
 def getCompilationGames(compName, system):
-    print("Entering getCompilationGames")
+    print("Entering getCompilationGames", compName)
+    global compilationName
+    compilationName = compName
 
     # Use the passed in compilation name to request the list of associated games
     compQueryName = compName.replace(" ", "+")
@@ -49,31 +52,31 @@ def getCompilationGames(compName, system):
     c = requests.get(compURL)
     compilationGames = c.content.decode("utf-8")
     compilationGames = compilationGames.strip('\t\t').split('\n')
-
     print("compURL", compURL)
-    print("compilationGames", compilationGames)
 
     # Parse the compilation games and add them to the overall gameDetails list
     x = 0
     while x < len(compilationGames):
 
         currentLine = compilationGames[x].strip()
-        print(x, "\t\t", currentLine)
         parseLogic(currentLine)
         x += 1
 
-
+    appendGameList(currentLine)
+    compilationName = ""
 
 def getCompilationNames(currentLine):
-    global compilation
-    compilation = currentLine.split('<')[0].strip()
-    print("\nCompilation: ", compilation)
-    gameDetailsRow = currentConsole + "," + compilation
-    gameDetails.append(gameDetailsRow)
-
-    getCompilationGames(compilation, "360")
+    global system
+    compilationName = currentLine.split('<')[0].strip()
+    print("\nCompilation: ", compilationName)
+    gameDetailsRow = currentConsole + "," + compilationName
+    getCompilationGames(compilationName, system)
 
 
+def getSystem(currentLine):
+    global system
+    system = currentLine.split('</b>')[0]
+    #print("System is:", system)
 
 
 def getComments(currentLine):
@@ -94,14 +97,14 @@ def getAchievements(currentLine):
     global achievements
     part1 = currentLine.split('<table class="achievebar">')[0]
     achievements = part1.split('<b>')[1].replace('</b>', "")
-    print(achievements)
+    #print(achievements)
 
 
 def getName(currentLine):
     global name
     cutoff = len(currentLine) - 4
     name = currentLine[3:cutoff]
-    print("\nName is:", name)
+    #print("\nName is:", name)
 
 
 def getStatus(currentLine):
@@ -109,7 +112,7 @@ def getStatus(currentLine):
     global name
     splitLine = currentLine
     completionStatus = splitLine.split('(')[1].split(')')[0]
-    print("\nStatus is:", completionStatus)
+    #print("\nStatus is:", completionStatus)
 
     # Case of name on the same line as the status. For example:
     # <a href="games.php?user=originalkilljoy&amp;console=360&amp;status=2"><img alt="(B)"
@@ -123,25 +126,35 @@ def getConsole(currentLine):
         currentLine = currentLine[10:]
     currentLine = currentLine.split('>')
     currentConsole = currentLine[3].split('<')[0]
-    print("\n\nConsole is:", currentConsole)
+    #print("\n\nConsole is:", currentConsole)
 
 def appendGameList(currentLine):
-    print("-------------------------------------------------")
-    global completionStatus, name, comments, achievements
+    #print("-------------------------------------------------")
+    global completionStatus, name, comments, achievements, compilationName
     gameDetailsRow = currentConsole   + "," + \
                      completionStatus + "," + \
+                     compilationName  + "," + \
                      name             + "," + \
                      achievements     + "," + \
                      comments
+
+    gameDetailsRow2 = [currentConsole, completionStatus, compilationName, name, achievements, comments]
     if name:
         gameDetails.append(gameDetailsRow)
+        gameDetailsMatrix.append(gameDetailsRow2)
 
     completionStatus = ""
     name = ""
     comments = ""
     achievements = ""
+    system = ""
 
 def parseLogic(currentLine):
+
+    # Get system for compilations
+    if '</b>' and '</div>' in currentLine and 'achievebar' not in currentLine:
+        getSystem(currentLine)
+
     # Reached the beginning of a new game row
     if '<section class="gamebox">' in currentLine:
         appendGameList(currentLine)
@@ -170,8 +183,6 @@ def parseLogic(currentLine):
     elif 'getComp(' in currentLine:
         getCompilationNames(currentLine)
 
-        #for game in compilationGames:
-        #   gameDetails.append(game)
 
 
 moreGames = True
@@ -217,16 +228,31 @@ while moreGames:
         #print(backloggery_backup[0][:10])
 
         x = 0
-#         currentConsole = ""
-#         completionStatus = ""
-#         name = ""
-#         comments = ""
-#         achievements = ""
         while x < len(backloggery_backup):
 
             currentLine = backloggery_backup[x].strip()
-            print(x, "\t", currentLine)
+            #print(x, "\t", currentLine)
 
             parseLogic(currentLine)
 
             x += 1
+
+
+
+   # Save the output to CSV
+
+import csv
+
+writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
+
+try:
+    with open(writepath, 'w') as outfile:
+        writer = csv.writer(outfile, delimiter = ",")
+
+        for row in gameDetailsMatrix:
+            writer.writerow(row)
+
+except:
+    print("Write Error: Permission denied. Can't open", writepath)
+
+print("Success! The file has been written here:", writepath)
