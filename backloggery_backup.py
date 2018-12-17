@@ -41,7 +41,7 @@ system = ""
 
 
 def getCompilationGames(compName, system):
-    print("Entering getCompilationGames", compName)
+    #print("Entering getCompilationGames", compName)
     global compilationName
     compilationName = compName
 
@@ -59,6 +59,7 @@ def getCompilationGames(compName, system):
     while x < len(compilationGames):
 
         currentLine = compilationGames[x].strip()
+        print(x, "-----\t\t", currentLine)
         parseLogic(currentLine)
         x += 1
 
@@ -124,12 +125,15 @@ def getConsole(currentLine):
     global currentConsole
     if currentLine.startswith('</section>'):
         currentLine = currentLine[10:]
-    currentLine = currentLine.split('>')
-    currentConsole = currentLine[3].split('<')[0]
-    #print("\n\nConsole is:", currentConsole)
+    try:
+        currentLine = currentLine.split('>')
+        currentConsole = currentLine[3].split('<')[0]
+    except:
+        print("\n\n LAST CONSOLE. End of data.")
+
 
 def appendGameList(currentLine):
-    #print("-------------------------------------------------")
+    print("-------------------------------------------------")
     global completionStatus, name, comments, achievements, compilationName
     gameDetailsRow = currentConsole   + "," + \
                      completionStatus + "," + \
@@ -207,9 +211,11 @@ while moreGames:
     backloggery_backup = backloggery_backup + page_source
     backloggery_csv = []
 
-    if(count >= 1000):
-    #if(len(page_source) < 100):
+    #if(count >= 1000):
     #if(count >= 3850):
+    # This line will collect the ENTIRE collection
+    if(len(page_source) < 100):
+
         moreGames = False
 
 
@@ -231,11 +237,14 @@ while moreGames:
         while x < len(backloggery_backup):
 
             currentLine = backloggery_backup[x].strip()
-            #print(x, "\t", currentLine)
+            print(x, "\t", currentLine)
 
             parseLogic(currentLine)
 
             x += 1
+
+
+    
 
 
 
@@ -256,3 +265,47 @@ except:
     print("Write Error: Permission denied. Can't open", writepath)
 
 print("Success! The file has been written here:", writepath)
+
+
+
+
+
+currentLine = """
+<div class="gamecom-arrows" id="gamecomarr1002706" onclick="getComments(1002706)">&#x25BC; &#x25BC; &#x25BC;</div> <div id="comments1002706" class="gamerow" style="display: none; border: none;">1941 Counter Attack,
+Avengers,
+Black Tiger,
+Block Block,
+Captain Commando,
+Eco Fighters,
+King of Dragons,
+Knights of the Round,
+Last Duel,
+Magic Sword,
+Mega Twins,
+Quiz &amp; Dragons: Capcom Quiz Game,
+Side Arms Hyper Dyne,
+Street Fighter,
+Strider,
+Super Street Fighter II Turbo,
+The Speed Rumbler,
+Three Wonders,
+Tiger Road,
+Varth: Operation Thunderstorm</div></section>
+<section class="gamebox">
+"""
+
+if 'getComments' in currentLine:
+
+    comments1 = ""
+    comments2 = ""
+    #comments = currentLine.split('>')[3].split('<')[0]
+    splitLine = currentLine.split('getComments')
+    part1 = splitLine[0]
+    if "gamerow" in part1:
+        comments1 = part1.split('"gamerow">')[1].split('<')[0] + "|"
+    part2 = splitLine[1].replace('&#x25BC;', "").strip()
+    comments2 = part2.split('>')[3].split('<')[0]
+    comments = comments1 + comments2.strip()
+    comments.replace(",", ";")
+
+    print("Comments:", comments)
