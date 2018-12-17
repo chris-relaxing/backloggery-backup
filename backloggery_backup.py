@@ -1,4 +1,3 @@
-
 import requests
 
 """
@@ -11,6 +10,7 @@ following pieces of information for each game:
     3. Achievement numbers (if set)
     4. Game completion status
     5. Game comments
+    6. Compilations: get the individual games in the compilation
 
 TODO:
 1. You can even download your friend's collections and make comparisons per console.
@@ -70,6 +70,7 @@ while moreGames:
         completionStatus = ""
         name = ""
         comments = ""
+        achievements = ""
         while x < len(backloggery_backup):
 
             currentLine = backloggery_backup[x].strip()
@@ -78,13 +79,19 @@ while moreGames:
             # Reached the beginning of a new game row
             if '<section class="gamebox">' in currentLine:
                 print("-------------------------------------------------")
-                gameDetailsRow = currentConsole + "," + completionStatus + "," + name + "," + comments
+                gameDetailsRow = currentConsole   + "," + \
+                                 completionStatus + "," + \
+                                 name             + "," + \
+                                 achievements     + "," + \
+                                 comments
+                gameDetailsRow.encode('UTF-8')
                 if name:
                     gameDetails.append(gameDetailsRow)
 
                 completionStatus = ""
                 name = ""
                 comments = ""
+                achievements = ""
 
             # Get console
             elif 'class="gamebox systemend"' in currentLine:
@@ -113,9 +120,25 @@ while moreGames:
                 name = currentLine[3:cutoff]
                 print("\nName is:", name)
 
+            # Get achievements
+            elif 'achievebar' in currentLine:
+                part1 = currentLine.split('<table class="achievebar">')[0]
+                achievements = part1.split('<b>')[1].replace('</b>', "")
+                print(achievements)
+
             # Get comments
             elif 'getComments' in currentLine:
-                comments = currentLine.split('>')[3].split('<')[0]
+                comments1 = ""
+                comments2 = ""
+                #comments = currentLine.split('>')[3].split('<')[0]
+                splitLine = currentLine.split('getComments')
+                part1 = splitLine[0]
+                if "gamerow" in part1:
+                    comments1 = part1.split('"gamerow">')[1].split('<')[0] + "|"
+                part2 = splitLine[1].replace('&#x25BC;', "").strip()
+                comments2 = part2.split('>')[3].split('<')[0]
+                comments = comments1 + comments2
+                comments.replace(",", ";")
 
             # Part of a compilation?
             elif 'getComp(' in currentLine:
@@ -123,7 +146,6 @@ while moreGames:
                 print("\nCompilation:", compilation)
                 gameDetailsRow = currentConsole + "," + compilation
                 gameDetails.append(gameDetailsRow)
-
 
 
             x += 1
@@ -163,3 +185,28 @@ if 'getComments' in currentLine:
     comments.replace(",", ";")
 
     print('\n', comments)
+
+# Test parsing of Achievements
+
+currentLine = """
+360</b> <span class="info"><img src="images/ribbon_0.gif" alt="" width="8" height="15" style="margin-top: 3px;" />
+<span><b>Achievements:</b> 120 / 1000 (12%)<table class="achievebar"><tr><td style="width: 12%;" class="b"></td>
+<td style="width: 88%;" class="bi"></td></tr></table></span></span>
+"""
+
+if 'achievebar' in currentLine:
+    part1 = currentLine.split('<table class="achievebar">')[0]
+    achievements = part1.split('<b>')[1].replace('</b>', "")
+    print(achievements)
+
+
+
+# Test unicode
+
+import sys
+# sys.setdefaultencoding("utf-8")
+print(sys.getdefaultencoding())
+
+text = 'Xbox 360,U,Brütal Legend,,'.encode('UTF-8')
+
+print(text.decode('UTF-8'))
