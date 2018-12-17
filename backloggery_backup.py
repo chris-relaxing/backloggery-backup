@@ -11,6 +11,9 @@ following pieces of information for each game:
     4. Game completion status
     5. Game comments
     6. Compilations: get the individual games in the compilation
+    Here is the network path for getting all of the games in a compilation:
+    
+    https://backloggery.com/ajax_expandcomp.php?user=originalKILLJOY&comp_sys=XBO&comp=Minecraft:+Story+Mode+-+A+Telltale+Games+Series
 
 TODO:
 1. You can even download your friend's collections and make comparisons per console.
