@@ -28,6 +28,7 @@ export_to_xlsx = True
 count = 0
 iterations = 1
 backloggery_backup = []
+raw_backloggery_backup = ""
 gameDetails = []
 gameDetailsMatrix = []
 compGameDetails = []
@@ -40,13 +41,23 @@ compilationName = ""
 system = ""
 
 
-def getCompilationGames(compName, system):
+def getCompilationGames(compName, currentLine):
     #print("Entering getCompilationGames", compName)
     global compilationName
+    global system
     compilationName = compName
 
-    # Use the passed in compilation name to request the list of associated games
+    # Parse this section for the system and compQueryName for the URL
+    # getComp(2718,'XBLA','Namco+Museum%3A+Virtual+Arcade')">&#x25BC;</span>
+    part1 = currentLine.split('getComp(')[1]
+    queryParts = part1.split(')')[0].split(',')
+    system = queryParts[1].replace("'", "")
+    #compQueryName = queryParts[2]
     compQueryName = compName.replace(" ", "+")
+
+
+    # Use the passed in compilation name to request the list of associated games
+    #compQueryName = compName.replace(" ", "+")
     compURL = "https://backloggery.com/ajax_expandcomp.php?user=" + backloggery_username \
     + "&comp_sys=" + system + "&comp=" + compQueryName
     c = requests.get(compURL)
@@ -67,11 +78,12 @@ def getCompilationGames(compName, system):
     compilationName = ""
 
 def getCompilationNames(currentLine):
-    global system
+#     global system
     compilationName = currentLine.split('<')[0].strip()
-    print("\nCompilation: ", compilationName)
-    gameDetailsRow = currentConsole + "," + compilationName
-    getCompilationGames(compilationName, system)
+    if compilationName != '&nbsp;':
+        print("\nCompilation: ", compilationName)
+        gameDetailsRow = currentConsole + "," + compilationName
+        getCompilationGames(compilationName, currentLine)
 
 
 def getSystem(currentLine):
@@ -92,7 +104,7 @@ def getComments(currentLine):
     part2 = splitLine[1].replace('&#x25BC;', "").strip()
     comments2 = part2.split('>')[3].split('<')[0]
     comments = comments1 + comments2
-    comments.replace(",", ";")
+    comments = comments.replace(",", "; ").replace('\n', " ")
 
 def getAchievements(currentLine):
     global achievements
@@ -154,8 +166,11 @@ def appendGameList(currentLine):
     system = ""
 
 def parseLogic(currentLine):
+    global comments
 
     # Get system for compilations
+    # compURL https://backloggery.com/ajax_expandcomp.php?user=originalKILLJOY&comp_sys=<div class="gamerow">Completed 15 episodes.
+    # [Ach. 4/12]</div></section><section class="gamebox">&comp=Namco+Museum:+Virtual+Arcade
     if '</b>' and '</div>' in currentLine and 'achievebar' not in currentLine:
         getSystem(currentLine)
 
@@ -183,6 +198,16 @@ def parseLogic(currentLine):
     elif 'getComments' in currentLine:
         getComments(currentLine)
 
+    # Get the rest of the comments
+    elif currentLine.endswith(','):
+        commentListItem = currentLine.replace(',', '; ')
+        comments += commentListItem
+
+    # Get the rest of the comments, continued.. Last game in the list
+    elif currentLine.endswith('</div></section>') and "gamerow" not in currentLine:
+        commentListItem = currentLine.split('</div></section>')[0]
+        comments += commentListItem + "; "
+
     # Part of a compilation?
     elif 'getComp(' in currentLine:
         getCompilationNames(currentLine)
@@ -193,19 +218,14 @@ moreGames = True
 while moreGames:
 
     targetURL = "https://backloggery.com/ajax_moregames.php?user=" + backloggery_username + "&ajid=" + str(count)
-    #targetURL = "https://backloggery.com/ajax_moregames.php?user=originalKILLJOY&ajid=" + str(count)
     r = requests.get(targetURL)
 
     # Using r.content returns bytes, which works with decode and allows special characters such as ü
     # to show up correctly in the output. r.text returns unicode, but that didn't work for special chars
     page_source = r.content.decode("utf-8")
-    #print("raw page_source", page_source)
     page_source = page_source.strip('\t\t').split('\n')
-    #print("Length of page_source", len(page_source))
 
     count += 50
-
-    #print("iterations ", iterations)
     iterations  += 1
 
     backloggery_backup = backloggery_backup + page_source
@@ -233,6 +253,8 @@ while moreGames:
         print("len(backloggery_backup[0])", len(backloggery_backup[0]))
         #print(backloggery_backup[0][:10])
 
+        print("raw page_source", raw_backloggery_backup)
+
         x = 0
         while x < len(backloggery_backup):
 
@@ -243,8 +265,10 @@ while moreGames:
 
             x += 1
 
+   
 
-    
+
+
 
 
 
