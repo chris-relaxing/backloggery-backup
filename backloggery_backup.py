@@ -19,6 +19,10 @@ TODO:
 1. You can even download your friend's collections and make comparisons per console.
 2. Idea: scrape Xbox game art images from xbox.com
 
+Currently working on:
+1. Bug: There is an off by one error. i.e. Zuma's Revenge! is listed for Xbox One instead of XBLA
+2. Bug: Xbox Fitness is in the wrong order of the game column in the .csv. 
+
 """
 
 backloggery_username = "originalKILLJOY"
@@ -265,7 +269,7 @@ while moreGames:
 
             x += 1
 
-   
+
 
 
 
