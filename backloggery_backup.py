@@ -1,4 +1,5 @@
 import requests
+import io
 
 """
 You don't need to know ahead of time how many games there are in your collection. This script will collect
@@ -21,7 +22,7 @@ TODO:
 
 Currently working on:
 1. Bug: There is an off by one error. i.e. Zuma's Revenge! is listed for Xbox One instead of XBLA
-2. Bug: Xbox Fitness is in the wrong order of the game column in the .csv. 
+2. Bug: Xbox Fitness is in the wrong order of the game column in the .csv.
 
 """
 
@@ -149,7 +150,7 @@ def getConsole(currentLine):
 
 
 def appendGameList(currentLine):
-    print("-------------------------------------------------")
+    # print("-------------------------------------------------")
     global completionStatus, name, comments, achievements, compilationName
     gameDetailsRow = currentConsole   + "," + \
                      completionStatus + "," + \
@@ -257,33 +258,42 @@ while moreGames:
         print("len(backloggery_backup[0])", len(backloggery_backup[0]))
         #print(backloggery_backup[0][:10])
 
-        print("raw page_source", raw_backloggery_backup)
+        # print("raw page_source", raw_backloggery_backup)
 
         x = 0
-        while x < len(backloggery_backup):
+        with open("console_output.txt", 'w', encoding='utf-8') as textwriter:
 
-            currentLine = backloggery_backup[x].strip()
-            print(x, "\t", currentLine)
+            while x < len(backloggery_backup):
 
-            parseLogic(currentLine)
+                currentLine = backloggery_backup[x].strip()
+                # print(x, "\t", currentLine)
+                parseLogic(currentLine)
 
-            x += 1
+                # textwriter.write("-------------------------------------------------\n")
+                # decodedCurrentLine = currentLine.encode('ascii')
+                # decodedCurrentLine = decodedCurrentLine.encode('UTF-8')
+                # textCurrentLine = str(x) + "\t" + decodedCurrentLine + '\n'
+                textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
+                # textCurrentLine = currentLine.encode('utf-8')
+                # textCurrentLine.encode('UTF-8')
+                textwriter.write(textCurrentLine)
+                # textwriter.write(currentLine)
+                # textwriter.write('\n')
+
+                x += 1
 
 
 
-
-
-
-
-
-   # Save the output to CSV
+# Save the output to CSV
 
 import csv
 
-writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
+# writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
+# Use relative path instead!
+writepath = 'backloggery_backup.csv'
 
 try:
-    with open(writepath, 'w') as outfile:
+    with open(writepath, 'w',  newline='', encoding='utf-8') as outfile:
         writer = csv.writer(outfile, delimiter = ",")
 
         for row in gameDetailsMatrix:
