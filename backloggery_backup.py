@@ -1,5 +1,5 @@
 import requests
-import io
+import csv
 
 """
 You don't need to know ahead of time how many games there are in your collection. This script will collect
@@ -29,10 +29,6 @@ Currently working on:
 backloggery_username = "originalKILLJOY"
 export_to_csv  = True
 export_to_xlsx = True
-
-count = 0
-iterations = 1
-backloggery_backup = []
 raw_backloggery_backup = ""
 gameDetails = []
 gameDetailsMatrix = []
@@ -46,6 +42,7 @@ compilationName = ""
 system = ""
 
 
+# ---------------------------------------------------------- #
 def getCompilationGames(compName, currentLine):
     #print("Entering getCompilationGames", compName)
     global compilationName
@@ -82,6 +79,7 @@ def getCompilationGames(compName, currentLine):
     appendGameList(currentLine)
     compilationName = ""
 
+# ---------------------------------------------------------- #
 def getCompilationNames(currentLine):
 #     global system
     compilationName = currentLine.split('<')[0].strip()
@@ -90,13 +88,13 @@ def getCompilationNames(currentLine):
         gameDetailsRow = currentConsole + "," + compilationName
         getCompilationGames(compilationName, currentLine)
 
-
+# ---------------------------------------------------------- #
 def getSystem(currentLine):
     global system
     system = currentLine.split('</b>')[0]
     #print("System is:", system)
 
-
+# ---------------------------------------------------------- #
 def getComments(currentLine):
     global comments
     comments1 = ""
@@ -111,20 +109,21 @@ def getComments(currentLine):
     comments = comments1 + comments2
     comments = comments.replace(",", "; ").replace('\n', " ")
 
+# ---------------------------------------------------------- #
 def getAchievements(currentLine):
     global achievements
     part1 = currentLine.split('<table class="achievebar">')[0]
     achievements = part1.split('<b>')[1].replace('</b>', "")
     #print(achievements)
 
-
+# ---------------------------------------------------------- #
 def getName(currentLine):
     global name
     cutoff = len(currentLine) - 4
     name = currentLine[3:cutoff]
     #print("\nName is:", name)
 
-
+# ---------------------------------------------------------- #
 def getStatus(currentLine):
     global completionStatus
     global name
@@ -138,6 +137,7 @@ def getStatus(currentLine):
     if "status=2" in currentLine or "status=3" in currentLine:
         name = currentLine.split('<b>')[1].split('<')[0]
 
+# ---------------------------------------------------------- #
 def getConsole(currentLine):
     global currentConsole
     if currentLine.startswith('</section>'):
@@ -148,9 +148,11 @@ def getConsole(currentLine):
     except:
         print("\n\n LAST CONSOLE. End of data.")
 
-
+# ---------------------------------------------------------- #
 def appendGameList(currentLine):
-    # print("-------------------------------------------------")
+    lineSeparator = "-------------------------------------------------\n"
+    # print(lineSeparator)
+    textwriter.write(lineSeparator)
     global completionStatus, name, comments, achievements, compilationName
     gameDetailsRow = currentConsole   + "," + \
                      completionStatus + "," + \
@@ -170,7 +172,12 @@ def appendGameList(currentLine):
     achievements = ""
     system = ""
 
+# ---------------------------------------------------------- #
 def parseLogic(currentLine):
+    """This is the main parsing function that is called over every line passed in by main. For each line
+       that comes in, parse the line to see what its contents are. If the contents match a familiar pattern
+       then call the corresponding parsing function that can further parse the line and collect the data."""
+
     global comments
 
     # Get system for compilations
@@ -180,7 +187,7 @@ def parseLogic(currentLine):
         getSystem(currentLine)
 
     # Reached the beginning of a new game row
-    if '<section class="gamebox">' in currentLine:
+    if '<section class="gamebox">' in currentLine or '<section class="gamebox nowplaying">' in currentLine:
         appendGameList(currentLine)
 
     # Get console
@@ -217,133 +224,150 @@ def parseLogic(currentLine):
     elif 'getComp(' in currentLine:
         getCompilationNames(currentLine)
 
+# ---------------------------------------------------------- #
+def testParseComments():
+    """Function used for testing of the parsing of comments."""
+
+    currentLine = """
+    <div class="gamecom-arrows" id="gamecomarr1002706" onclick="getComments(1002706)">&#x25BC; &#x25BC; &#x25BC;</div> <div id="comments1002706" class="gamerow" style="display: none; border: none;">1941 Counter Attack,
+    Avengers,
+    Black Tiger,
+    Block Block,
+    Captain Commando,
+    Eco Fighters,
+    King of Dragons,
+    Knights of the Round,
+    Last Duel,
+    Magic Sword,
+    Mega Twins,
+    Quiz &amp; Dragons: Capcom Quiz Game,
+    Side Arms Hyper Dyne,
+    Street Fighter,
+    Strider,
+    Super Street Fighter II Turbo,
+    The Speed Rumbler,
+    Three Wonders,
+    Tiger Road,
+    Varth: Operation Thunderstorm</div></section>
+    <section class="gamebox">
+    """
+
+    if 'getComments' in currentLine:
+
+        comments1 = ""
+        comments2 = ""
+        #comments = currentLine.split('>')[3].split('<')[0]
+        splitLine = currentLine.split('getComments')
+        part1 = splitLine[0]
+        if "gamerow" in part1:
+            comments1 = part1.split('"gamerow">')[1].split('<')[0] + "|"
+        part2 = splitLine[1].replace('&#x25BC;', "").strip()
+        comments2 = part2.split('>')[3].split('<')[0]
+        comments = comments1 + comments2.strip()
+        comments.replace(",", ";")
+
+        print("Comments:", comments)
+
+# ---------------------------------------------------------- #
+def writeCSV():
+    # Save the output to CSV
+
+    # writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
+    # Use relative path instead!
+    writepath = 'backloggery_backup.csv'
+
+    try:
+        with open(writepath, 'w',  newline='', encoding='utf-8') as outfile:
+            writer = csv.writer(outfile, delimiter = ",")
+
+            for row in gameDetailsMatrix:
+                writer.writerow(row)
+
+    except:
+        print("Write Error: Permission denied. Can't open", writepath)
+
+    print("Success! The file has been written here:", writepath)
 
 
-moreGames = True
-while moreGames:
+# ---------------------------------------------------------- #
+def main():
+    """Main control loop. Uses requests module to fetch the data and iterate over the backloggery collection.
+       Provides a printed summary of the overall count. Goes line by line through the returned data and
+       passes currentLine to the parseLogic function. Also writes every line to a text document.  """
 
-    targetURL = "https://backloggery.com/ajax_moregames.php?user=" + backloggery_username + "&ajid=" + str(count)
-    r = requests.get(targetURL)
+    backloggery_backup = []
+    moreGames = True
+    count = 0
+    iterations = 1
+    while moreGames:
 
-    # Using r.content returns bytes, which works with decode and allows special characters such as ü
-    # to show up correctly in the output. r.text returns unicode, but that didn't work for special chars
-    page_source = r.content.decode("utf-8")
-    page_source = page_source.strip('\t\t').split('\n')
+        targetURL = "https://backloggery.com/ajax_moregames.php?user=" + backloggery_username + "&ajid=" + str(count)
+        r = requests.get(targetURL)
 
-    count += 50
-    iterations  += 1
+        # Using r.content returns bytes, which works with decode and allows special characters such as ü
+        # to show up correctly in the output. r.text returns unicode, but that didn't work for special chars
+        page_source = r.content.decode("utf-8")
+        page_source = page_source.strip('\t\t').split('\n')
 
-    backloggery_backup = backloggery_backup + page_source
-    backloggery_csv = []
+        count += 50
+        iterations  += 1
 
-    #if(count >= 1000):
-    #if(count >= 3850):
-    # This line will collect the ENTIRE collection
-    if(len(page_source) < 100):
+        backloggery_backup = backloggery_backup + page_source
+        backloggery_csv = []
 
-        moreGames = False
+        # Set the number of rows to iterate over
+        #if(count >= 1000):
+        #if(count >= 3850):
 
+        # This line will collect the ENTIRE collection
+        if(len(page_source) < 100):
 
-        print("\nURL:", targetURL)
-        print("--------------------------------------")
+        # if(count >= 150):
+            moreGames = False
 
-        print("Number of lines in the returned response: ", len(page_source))
-        print("Number of games total", iterations*50)
-        #print("Final page_source\n", page_source)
+            print("\nURL:", targetURL)
+            print("--------------------------------------")
 
-        print("--------------------------------------")
+            print("Number of lines in the returned response: ", len(page_source))
+            print("Number of games total", iterations*50)
+            #print("Final page_source\n", page_source)
 
-        #This works:
-        print("len(backloggery_backup)", len(backloggery_backup))
-        print("len(backloggery_backup[0])", len(backloggery_backup[0]))
-        #print(backloggery_backup[0][:10])
+            print("--------------------------------------")
 
-        # print("raw page_source", raw_backloggery_backup)
+            #This works:
+            print("len(backloggery_backup)", len(backloggery_backup))
+            print("len(backloggery_backup[0])", len(backloggery_backup[0]))
+            #print(backloggery_backup[0][:10])
 
-        x = 0
-        with open("console_output.txt", 'w', encoding='utf-8') as textwriter:
+            # print("raw page_source", raw_backloggery_backup)
 
-            while x < len(backloggery_backup):
+            x = 0
+            global textwriter
+            with open("console_output.txt", 'w', encoding='utf-8') as textwriter:
 
-                currentLine = backloggery_backup[x].strip()
-                # print(x, "\t", currentLine)
-                parseLogic(currentLine)
+                while x < len(backloggery_backup):
 
-                # textwriter.write("-------------------------------------------------\n")
-                # decodedCurrentLine = currentLine.encode('ascii')
-                # decodedCurrentLine = decodedCurrentLine.encode('UTF-8')
-                # textCurrentLine = str(x) + "\t" + decodedCurrentLine + '\n'
-                textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
-                # textCurrentLine = currentLine.encode('utf-8')
-                # textCurrentLine.encode('UTF-8')
-                textwriter.write(textCurrentLine)
-                # textwriter.write(currentLine)
-                # textwriter.write('\n')
+                    currentLine = backloggery_backup[x].strip()
+                    # Disable print to console because there is an encoding error
+                    # print(x, "\t", currentLine)
+                    parseLogic(currentLine)
 
-                x += 1
+                    # textwriter.write("-------------------------------------------------\n")
+                    # decodedCurrentLine = currentLine.encode('ascii')
+                    # decodedCurrentLine = decodedCurrentLine.encode('UTF-8')
+                    # textCurrentLine = str(x) + "\t" + decodedCurrentLine + '\n'
+                    textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
+                    # textCurrentLine = currentLine.encode('utf-8')
+                    # textCurrentLine.encode('UTF-8')
+                    textwriter.write(textCurrentLine)
+                    # textwriter.write(currentLine)
+                    # textwriter.write('\n')
 
+                    x += 1
+                    
+    # Write the games list to .csv
+    writeCSV()
+# ---------------------------------------------------------- #
 
-
-# Save the output to CSV
-
-import csv
-
-# writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
-# Use relative path instead!
-writepath = 'backloggery_backup.csv'
-
-try:
-    with open(writepath, 'w',  newline='', encoding='utf-8') as outfile:
-        writer = csv.writer(outfile, delimiter = ",")
-
-        for row in gameDetailsMatrix:
-            writer.writerow(row)
-
-except:
-    print("Write Error: Permission denied. Can't open", writepath)
-
-print("Success! The file has been written here:", writepath)
-
-
-
-
-
-currentLine = """
-<div class="gamecom-arrows" id="gamecomarr1002706" onclick="getComments(1002706)">&#x25BC; &#x25BC; &#x25BC;</div> <div id="comments1002706" class="gamerow" style="display: none; border: none;">1941 Counter Attack,
-Avengers,
-Black Tiger,
-Block Block,
-Captain Commando,
-Eco Fighters,
-King of Dragons,
-Knights of the Round,
-Last Duel,
-Magic Sword,
-Mega Twins,
-Quiz &amp; Dragons: Capcom Quiz Game,
-Side Arms Hyper Dyne,
-Street Fighter,
-Strider,
-Super Street Fighter II Turbo,
-The Speed Rumbler,
-Three Wonders,
-Tiger Road,
-Varth: Operation Thunderstorm</div></section>
-<section class="gamebox">
-"""
-
-if 'getComments' in currentLine:
-
-    comments1 = ""
-    comments2 = ""
-    #comments = currentLine.split('>')[3].split('<')[0]
-    splitLine = currentLine.split('getComments')
-    part1 = splitLine[0]
-    if "gamerow" in part1:
-        comments1 = part1.split('"gamerow">')[1].split('<')[0] + "|"
-    part2 = splitLine[1].replace('&#x25BC;', "").strip()
-    comments2 = part2.split('>')[3].split('<')[0]
-    comments = comments1 + comments2.strip()
-    comments.replace(",", ";")
-
-    print("Comments:", comments)
+if __name__ == '__main__':
+    main()
