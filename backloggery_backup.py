@@ -6,10 +6,10 @@ You don't need to know ahead of time how many games there are in your collection
 your entire backloggery.com video game collection and export it to a .csv or .xlsx file. It collects the
 following pieces of information for each game:
 
-    1. Name of game
-    2. Console
-    3. Achievement numbers (if set)
-    4. Game completion status
+    1. Console
+    2. Game completion status
+    3. Name of game
+    4. Achievement numbers (if set)
     5. Game comments
     6. Compilations: get the individual games in the compilation
     Here is the network path for getting all of the games in a compilation:
@@ -21,8 +21,7 @@ TODO:
 2. Idea: scrape Xbox game art images from xbox.com
 
 Currently working on:
-1. Bug: There is an off by one error. i.e. Zuma's Revenge! is listed for Xbox One instead of XBLA - FIXED
-2. Bug: Xbox Fitness is in the wrong order of the game column in the .csv.
+1. Bug:
 
 """
 
@@ -41,6 +40,7 @@ comments = ""
 achievements = ""
 compilationName = ""
 system = ""
+gameRegion = ""
 # systemTransition = 0
 
 
@@ -67,14 +67,14 @@ def getCompilationGames(compName, currentLine):
     c = requests.get(compURL)
     compilationGames = c.content.decode("utf-8")
     compilationGames = compilationGames.strip('\t\t').split('\n')
-    print("compURL", compURL)
+    # print("compURL", compURL)
 
     # Parse the compilation games and add them to the overall gameDetails list
     x = 0
     while x < len(compilationGames):
 
         currentLine = compilationGames[x].strip()
-        print(x, "-----\t\t", currentLine)
+        # print(x, "-----\t\t", currentLine)
         parseLogic(currentLine)
         x += 1
 
@@ -86,7 +86,7 @@ def getCompilationNames(currentLine):
 #     global system
     compilationName = currentLine.split('<')[0].strip()
     if compilationName != '&nbsp;':
-        print("\nCompilation: ", compilationName)
+        print("\n\tCompilation: ", compilationName)
         gameDetailsRow = currentConsole + "," + compilationName
         getCompilationGames(compilationName, currentLine)
 
@@ -140,6 +140,13 @@ def getStatus(currentLine):
         name = currentLine.split('<b>')[1].split('<')[0]
 
 # ---------------------------------------------------------- #
+def getRegion(currentLine):
+    global gameRegion
+    #  <img class="lift" src="images/NA_flag.gif" alt="NA" title="N.America" />
+    rightSide = currentLine.split('title="')[1]
+    gameRegion = rightSide.split('"')[0]
+
+# ---------------------------------------------------------- #
 def getNewConsole(currentLine):
     global newConsole
     global currentConsole
@@ -166,9 +173,10 @@ def appendGameList(currentLine):
     lineSeparator = "-------------------------------------------------\n"
     # print(lineSeparator)
     textwriter.write(lineSeparator)
-    global completionStatus, name, comments, achievements, compilationName
+    global completionStatus, name, comments, achievements, compilationName, gameRegion
 
-    gameDetailsRow = [currentConsole, completionStatus, compilationName, name, achievements, comments]
+    # This is the order of the columns in the game collection .csv
+    gameDetailsRow = [currentConsole, gameRegion, name, completionStatus, compilationName, achievements, comments]
     if name:
         gameDetailsMatrix.append(gameDetailsRow)
 
@@ -178,6 +186,7 @@ def appendGameList(currentLine):
     comments = ""
     achievements = ""
     system = ""
+    gameRegion = ""
 
 # ---------------------------------------------------------- #
 def parseLogic(currentLine):
@@ -232,6 +241,10 @@ def parseLogic(currentLine):
     # Part of a compilation?
     elif 'getComp(' in currentLine:
         getCompilationNames(currentLine)
+
+    # Get region
+    elif 'title=' in currentLine:
+        getRegion(currentLine)
 
     # Reached the beginning of a new game row
     # if '<section class="gamebox">' in currentLine or '<section class="gamebox nowplaying">' in currentLine:
@@ -335,7 +348,7 @@ def main():
         # This line will collect the ENTIRE collection
         # if(len(page_source) < 100):
 
-        if(count >= 1500):
+        if(count >= 10):
             moreGames = False
 
             print("\nURL:", targetURL)
