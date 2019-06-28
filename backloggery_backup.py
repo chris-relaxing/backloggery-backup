@@ -21,7 +21,7 @@ TODO:
 2. Idea: scrape Xbox game art images from xbox.com
 
 Currently working on:
-1. Bug: There is an off by one error. i.e. Zuma's Revenge! is listed for Xbox One instead of XBLA
+1. Bug: There is an off by one error. i.e. Zuma's Revenge! is listed for Xbox One instead of XBLA - FIXED
 2. Bug: Xbox Fitness is in the wrong order of the game column in the .csv.
 
 """
@@ -34,12 +34,14 @@ gameDetails = []
 gameDetailsMatrix = []
 compGameDetails = []
 currentConsole = ""
+newConsole = ""
 completionStatus = ""
 name = ""
 comments = ""
 achievements = ""
 compilationName = ""
 system = ""
+# systemTransition = 0
 
 
 # ---------------------------------------------------------- #
@@ -138,15 +140,26 @@ def getStatus(currentLine):
         name = currentLine.split('<b>')[1].split('<')[0]
 
 # ---------------------------------------------------------- #
-def getConsole(currentLine):
+def getNewConsole(currentLine):
+    global newConsole
     global currentConsole
+    global name
+
     if currentLine.startswith('</section>'):
         currentLine = currentLine[10:]
     try:
-        currentLine = currentLine.split('>')
-        currentConsole = currentLine[3].split('<')[0]
+        # Code to make sure that the console is correct when we transition to a new console
+        if newConsole:
+            currentConsole = newConsole
+            newConsole = ""
+        else:
+            currentLine = currentLine.split('>')
+            currentConsole = currentLine[3].split('<')[0]
+
     except:
         print("\n\n LAST CONSOLE. End of data.")
+
+    print("#", currentConsole, name)
 
 # ---------------------------------------------------------- #
 def appendGameList(currentLine):
@@ -154,18 +167,12 @@ def appendGameList(currentLine):
     # print(lineSeparator)
     textwriter.write(lineSeparator)
     global completionStatus, name, comments, achievements, compilationName
-    gameDetailsRow = currentConsole   + "," + \
-                     completionStatus + "," + \
-                     compilationName  + "," + \
-                     name             + "," + \
-                     achievements     + "," + \
-                     comments
 
-    gameDetailsRow2 = [currentConsole, completionStatus, compilationName, name, achievements, comments]
+    gameDetailsRow = [currentConsole, completionStatus, compilationName, name, achievements, comments]
     if name:
-        gameDetails.append(gameDetailsRow)
-        gameDetailsMatrix.append(gameDetailsRow2)
+        gameDetailsMatrix.append(gameDetailsRow)
 
+    # Clear globals
     completionStatus = ""
     name = ""
     comments = ""
@@ -179,28 +186,30 @@ def parseLogic(currentLine):
        then call the corresponding parsing function that can further parse the line and collect the data."""
 
     global comments
+    global newConsole
+    global currentConsole
+
+    # Reached the end of a game row
+    if currentLine.startswith('</section><section class="gamebox systemend">') or '</section>' in currentLine:
+        appendGameList(currentLine)
+
+        # Get console
+        if '<section class="gamebox systemend">' in currentLine:
+            getNewConsole(currentLine)
 
     # Get system for compilations
     # compURL https://backloggery.com/ajax_expandcomp.php?user=originalKILLJOY&comp_sys=<div class="gamerow">Completed 15 episodes.
     # [Ach. 4/12]</div></section><section class="gamebox">&comp=Namco+Museum:+Virtual+Arcade
-    if '</b>' and '</div>' in currentLine and 'achievebar' not in currentLine:
+    elif '</b>' and '</div>' in currentLine and 'achievebar' not in currentLine:
         getSystem(currentLine)
-
-    # Reached the beginning of a new game row
-    if '<section class="gamebox">' in currentLine or '<section class="gamebox nowplaying">' in currentLine:
-        appendGameList(currentLine)
-
-    # Get console
-    elif 'class="gamebox systemend"' in currentLine:
-        getConsole(currentLine)
-
-    # Get status
-    elif 'alt="(' in currentLine:
-        getStatus(currentLine)
 
     # Get name
     elif currentLine.startswith('<b>') and currentLine.endswith('</b>'):
         getName(currentLine)
+
+    # Get status
+    elif 'alt="(' in currentLine:
+        getStatus(currentLine)
 
     # Get achievements
     elif 'achievebar' in currentLine:
@@ -223,6 +232,10 @@ def parseLogic(currentLine):
     # Part of a compilation?
     elif 'getComp(' in currentLine:
         getCompilationNames(currentLine)
+
+    # Reached the beginning of a new game row
+    # if '<section class="gamebox">' in currentLine or '<section class="gamebox nowplaying">' in currentLine:
+    #     appendGameList(currentLine)
 
 # ---------------------------------------------------------- #
 def testParseComments():
@@ -293,8 +306,8 @@ def writeCSV():
 def main():
     """Main control loop. Uses requests module to fetch the data and iterate over the backloggery collection.
        Provides a printed summary of the overall count. Goes line by line through the returned data and
-       passes currentLine to the parseLogic function. Also writes every line to a text document.  """
-
+       passes currentLine to the parseLogic function. Also writes every line to a text document.
+    """
     backloggery_backup = []
     moreGames = True
     count = 0
@@ -320,9 +333,9 @@ def main():
         #if(count >= 3850):
 
         # This line will collect the ENTIRE collection
-        if(len(page_source) < 100):
+        # if(len(page_source) < 100):
 
-        # if(count >= 150):
+        if(count >= 1500):
             moreGames = False
 
             print("\nURL:", targetURL)
@@ -364,7 +377,7 @@ def main():
                     # textwriter.write('\n')
 
                     x += 1
-                    
+
     # Write the games list to .csv
     writeCSV()
 # ---------------------------------------------------------- #
