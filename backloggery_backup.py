@@ -21,7 +21,9 @@ TODO:
 2. Idea: scrape Xbox game art images from xbox.com
 
 Currently working on:
-1. Bug:
+1. Bug: Missing one Xbox One game
+2. PlayStation console didn't show up in the csv
+3. Wii U Downloads didn't show up in the csv
 
 """
 
@@ -346,9 +348,9 @@ def main():
         #if(count >= 3850):
 
         # This line will collect the ENTIRE collection
-        # if(len(page_source) < 100):
+        if(len(page_source) < 100):
 
-        if(count >= 10):
+        # if(count >= 10):
             moreGames = False
 
             print("\nURL:", targetURL)
