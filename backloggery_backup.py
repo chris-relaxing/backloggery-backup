@@ -20,10 +20,12 @@ TODO:
 1. You can even download your friend's collections and make comparisons per console.
 2. Idea: scrape Xbox game art images from xbox.com
 
-Currently working on:
-1. Bug: Missing one Xbox One game
-2. PlayStation console didn't show up in the csv
-3. Wii U Downloads didn't show up in the csv
+Bugs/Issues Currently working on:
+1. Missing one Xbox One Download game
+2. Console name "PlayStation" didn't show up in the csv -FIXED
+3. Wii U Downloads didn't show up in the csv -FIXED
+4. Some of the Nintedo DS games have the wrong thing for console. --> "Includes 40 games" -FIXED
+5. Some of the Playstation minis have the wrong thing for console. --> "Playstation Hits" -FIXED
 
 """
 
@@ -112,6 +114,7 @@ def getComments(currentLine):
     comments2 = part2.split('>')[3].split('<')[0]
     comments = comments1 + comments2
     comments = comments.replace(",", "; ").replace('\n', " ")
+    # print("Comments:", comments)
 
 # ---------------------------------------------------------- #
 def getAchievements(currentLine):
@@ -200,8 +203,29 @@ def parseLogic(currentLine):
     global newConsole
     global currentConsole
 
+    # Special case where two lines run together in the input and we end up having comments AND end of
+    # console, beginning of new console on the same line. For example:
+    """
+    <div class="gamecom-arrows" id="gamecomarr20082084" onclick="getComments(20082084)">&#x25BC;
+    &#x25BC; &#x25BC;</div> <div id="comments20082084" class="gamerow" style="display: none; border:
+    none;">Playstation Hits</div></section><section class="gamebox systemend"></section>           <section
+    class="system title shadow" style="margin-top: 15px;">PlayStation minis</section>
+    """
+    if currentLine.startswith('<div') and currentLine.endswith('</section>'):
+        # Get comments
+        if 'getComments' in currentLine:
+            getComments(currentLine)
+
+        if currentLine.startswith('</section><section class="gamebox systemend">') or '</section>' in currentLine:
+            appendGameList(currentLine)
+
+            # Get console
+            if '<section class="gamebox systemend">' in currentLine:
+                currentLine = currentLine.split('</div></section>')[1]
+                getNewConsole(currentLine)
+
     # Reached the end of a game row
-    if currentLine.startswith('</section><section class="gamebox systemend">') or '</section>' in currentLine:
+    elif currentLine.startswith('</section><section class="gamebox systemend">') or '</section>' in currentLine:
         appendGameList(currentLine)
 
         # Get console
@@ -302,7 +326,8 @@ def writeCSV():
 
     # writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
     # Use relative path instead!
-    writepath = 'backloggery_backup.csv'
+    date = "_122319_1"
+    writepath = 'backloggery_backup' + date + '.csv'
 
     try:
         with open(writepath, 'w',  newline='', encoding='utf-8') as outfile:
@@ -379,18 +404,8 @@ def main():
                     # Disable print to console because there is an encoding error
                     # print(x, "\t", currentLine)
                     parseLogic(currentLine)
-
-                    # textwriter.write("-------------------------------------------------\n")
-                    # decodedCurrentLine = currentLine.encode('ascii')
-                    # decodedCurrentLine = decodedCurrentLine.encode('UTF-8')
-                    # textCurrentLine = str(x) + "\t" + decodedCurrentLine + '\n'
                     textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
-                    # textCurrentLine = currentLine.encode('utf-8')
-                    # textCurrentLine.encode('UTF-8')
                     textwriter.write(textCurrentLine)
-                    # textwriter.write(currentLine)
-                    # textwriter.write('\n')
-
                     x += 1
 
     # Write the games list to .csv
