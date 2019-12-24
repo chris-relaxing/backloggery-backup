@@ -22,10 +22,8 @@ TODO:
 
 Bugs/Issues Currently working on:
 1. Missing one Xbox One Download game
-2. Console name "PlayStation" didn't show up in the csv -FIXED
-3. Wii U Downloads didn't show up in the csv -FIXED
-4. Some of the Nintedo DS games have the wrong thing for console. --> "Includes 40 games" -FIXED
-5. Some of the Playstation minis have the wrong thing for console. --> "Playstation Hits" -FIXED
+2. Get accurate game count - DONE
+3. Some of the comments are missing. For example, CoD Black Ops IIII
 
 """
 
@@ -326,9 +324,9 @@ def writeCSV():
 
     # writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
     # Use relative path instead!
-    date = "_122319_1"
+    date = "_122319_3"
     writepath = 'backloggery_backup' + date + '.csv'
-
+    print("Total number of games:", len(gameDetailsMatrix))
     try:
         with open(writepath, 'w',  newline='', encoding='utf-8') as outfile:
             writer = csv.writer(outfile, delimiter = ",")
@@ -379,13 +377,13 @@ def main():
             moreGames = False
 
             print("\nURL:", targetURL)
-            print("--------------------------------------")
+            # print("--------------------------------------")
 
-            print("Number of lines in the returned response: ", len(page_source))
-            print("Number of games total", iterations*50)
+            # print("Number of lines in the returned response: ", len(page_source))
+            # print("Rough total number of games:", iterations*50)
             #print("Final page_source\n", page_source)
 
-            print("--------------------------------------")
+            # print("--------------------------------------")
 
             #This works:
             print("len(backloggery_backup)", len(backloggery_backup))
@@ -413,4 +411,5 @@ def main():
 # ---------------------------------------------------------- #
 
 if __name__ == '__main__':
+    print("Contacting backloggery to fetch game collection...")
     main()
