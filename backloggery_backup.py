@@ -22,8 +22,8 @@ TODO:
 
 Bugs/Issues Currently working on:
 1. Missing one Xbox One Download game
-2. Get accurate game count - DONE
-3. Some of the comments are missing. For example, CoD Black Ops IIII
+2. Some of the comments are missing. For example, CoD Black Ops IIII
+3. Character encoding issue again. The CSV is not displaying special chars correctly.
 
 """
 
@@ -112,7 +112,7 @@ def getComments(currentLine):
     comments2 = part2.split('>')[3].split('<')[0]
     comments = comments1 + comments2
     comments = comments.replace(",", "; ").replace('\n', " ")
-    # print("Comments:", comments)
+    print("Comments:", comments)
 
 # ---------------------------------------------------------- #
 def getAchievements(currentLine):
@@ -324,7 +324,7 @@ def writeCSV():
 
     # writepath = r'/Users/chrisnielsen/Documents/random-project-files/github-stage/backloggery-backup/backloggery_backup.csv'
     # Use relative path instead!
-    date = "_122319_3"
+    date = "_021920_1"
     writepath = 'backloggery_backup' + date + '.csv'
     print("Total number of games:", len(gameDetailsMatrix))
     try:
@@ -366,10 +366,6 @@ def main():
         backloggery_backup = backloggery_backup + page_source
         backloggery_csv = []
 
-        # Set the number of rows to iterate over
-        #if(count >= 1000):
-        #if(count >= 3850):
-
         # This line will collect the ENTIRE collection
         if(len(page_source) < 100):
 
@@ -394,17 +390,25 @@ def main():
 
             x = 0
             global textwriter
+            global raw_output
+            global raw_compressed
             with open("console_output.txt", 'w', encoding='utf-8') as textwriter:
+                with open("raw_output.txt", 'w', encoding='utf-8') as raw_output:
+                    with open("raw_compressed.txt", 'w', encoding='utf-8') as raw_compressed:
 
-                while x < len(backloggery_backup):
+                        while x < len(backloggery_backup):
 
-                    currentLine = backloggery_backup[x].strip()
-                    # Disable print to console because there is an encoding error
-                    # print(x, "\t", currentLine)
-                    parseLogic(currentLine)
-                    textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
-                    textwriter.write(textCurrentLine)
-                    x += 1
+                            currentLine = backloggery_backup[x].strip()
+                            uncompressed = backloggery_backup[x]
+                            # Disable print to console because there is an encoding error
+                            # print(x, "\t", currentLine)
+                            parseLogic(currentLine)
+                            textCurrentLine = str(x).encode("utf-8").decode("utf-8") + "\t" + currentLine + '\n'
+                            textwriter.write(textCurrentLine)
+                            raw_output.write(currentLine + '\n')
+                            raw_compressed.write(uncompressed)
+                            x += 1
+
 
     # Write the games list to .csv
     writeCSV()
